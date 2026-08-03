@@ -1,0 +1,83 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CleanIPTV Remote</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <link rel="stylesheet" href="remote.css">
+</head>
+<body>
+    <div id="setup-screen" class="screen active">
+        <div class="header">
+            <h2>Pareamento</h2>
+            <p>Conecte-se à sua TV</p>
+        </div>
+        
+        <div class="setup-content">
+            <div id="reader" style="width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 20px; display: none;"></div>
+            
+            <button id="btn-scan" class="action-btn" style="background: var(--primary-color);">
+                Escaneie o QR Code na TV
+            </button>
+            
+            <div class="divider">ou</div>
+            
+            <div class="manual-entry">
+                <input type="text" id="peer-id-input" placeholder="Digite o Código da TV (ex: TV-ABCD)" />
+                <button id="btn-connect" class="action-btn outline">Conectar Manualmente</button>
+            </div>
+            
+            <div id="saved-devices" class="saved-devices" style="display: none;">
+                <h3>Dispositivos Salvos</h3>
+                <ul id="devices-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="remote-screen" class="screen">
+        <div class="remote-header">
+            <div class="status">
+                <span class="dot connected"></span> Conectado a <b id="connected-id"></b>
+            </div>
+            <button id="btn-disconnect" class="disconnect-btn">Desconectar</button>
+        </div>
+
+        <div class="dpad-container">
+            <button class="dpad-btn up" data-key="ArrowUp"><svg viewBox="0 0 24 24"><path d="M12 4l-8 8h16z"/></svg></button>
+            <button class="dpad-btn down" data-key="ArrowDown"><svg viewBox="0 0 24 24"><path d="M12 20l8-8H4z"/></svg></button>
+            <button class="dpad-btn left" data-key="ArrowLeft"><svg viewBox="0 0 24 24"><path d="M4 12l8-8v16z"/></svg></button>
+            <button class="dpad-btn right" data-key="ArrowRight"><svg viewBox="0 0 24 24"><path d="M20 12l-8 8V4z"/></svg></button>
+            <button class="dpad-btn ok" data-key="Enter">OK</button>
+        </div>
+
+        <div class="controls-grid">
+            <button class="control-btn" data-key="Escape">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                <span>Voltar</span>
+            </button>
+            <button class="control-btn" data-key="M">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                <span>Mute</span>
+            </button>
+            <button class="control-btn" data-key=" ">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <span>Play/Pause</span>
+            </button>
+            <button class="control-btn" data-key="F">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                <span>Tela Cheia</span>
+            </button>
+        </div>
+    </div>
+    
+    <div id="loader" class="loader-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p id="loader-text">Conectando...</p>
+    </div>
+
+    <script src="remote.js"></script>
+</body>
+</html>
