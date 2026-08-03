@@ -1,4 +1,4 @@
-﻿const urlParams = new URLSearchParams(window.location.search);
+const urlParams = new URLSearchParams(window.location.search);
 const initialTargetId = urlParams.get('id');
 
 let peer = null;
@@ -159,7 +159,7 @@ function disconnect() {
 
 function sendCommand(key) {
     if (conn && conn.open) {
-        conn.send({ type: 'keydown', key: key });
+        conn.send({ command: key });
         // Haptic feedback
         if (navigator.vibrate) navigator.vibrate(20);
     }
