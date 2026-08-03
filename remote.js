@@ -158,6 +158,17 @@ function disconnect() {
 }
 
 function sendCommand(key) {
+    if (key === 'SEARCH') {
+        const query = prompt("Digite o que deseja buscar na TV:");
+        if (query !== null) {
+            if (conn && conn.open) {
+                conn.send({ command: 'SEARCH', query: query });
+                if (navigator.vibrate) navigator.vibrate(20);
+            }
+        }
+        return;
+    }
+
     if (conn && conn.open) {
         conn.send({ command: key });
         // Haptic feedback
