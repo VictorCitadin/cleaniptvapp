@@ -92,66 +92,143 @@ function renderSavedDevices() {
     });
 }
 
+const PEER_OPTIONS = {
+    config: {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun.cloudflare.com:3478' }
+        ]
+    }
+};
+
+let connectTimer = null;
+let pendingTargetId = null;
+
+function friendlyError(err) {
+    switch (err && err.type) {
+        case 'peer-unavailable':
+            return 'TV não encontrada. Confira se o CleanIPTV está aberto no computador e se o código está correto.';
+        case 'network':
+        case 'server-error':
+        case 'socket-error':
+        case 'socket-closed':
+            return 'Sem conexão com o servidor. Verifique sua internet e tente novamente.';
+        case 'browser-incompatible':
+            return 'Este navegador não suporta a conexão. Tente o Chrome.';
+        default:
+            return (err && err.message) || 'Erro desconhecido.';
+    }
+}
+
 function initializePeer(targetId) {
     showLoader('Iniciando conexão segura...');
-    
+    pendingTargetId = targetId || null;
+
     // Destroy previous instance if any
     if (peer) peer.destroy();
-    
-    peer = new Peer(); // Auto generate my ID
-    
+
+    peer = new Peer(undefined, PEER_OPTIONS); // Auto generate my ID
+
     peer.on('open', (id) => {
         hideLoader();
-        if (targetId) {
-            connectToPeer(targetId);
+        if (pendingTargetId) {
+            const t = pendingTargetId;
+            pendingTargetId = null;
+            connectToPeer(t);
         }
     });
-    
+
+    // Perdeu o servidor de sinalização: reconecta mantendo o mesmo ID
+    peer.on('disconnected', () => {
+        if (peer && !peer.destroyed) peer.reconnect();
+    });
+
     peer.on('error', (err) => {
+        clearTimeout(connectTimer);
         hideLoader();
-        alert('Erro de conexão: ' + err.message);
-        disconnect();
+        alert('Erro de conexão: ' + friendlyError(err));
+        // peer-unavailable não invalida o nosso peer; os demais sim
+        if (err.type === 'peer-unavailable') {
+            showScreen('setup-screen');
+            renderSavedDevices();
+        } else {
+            disconnect();
+            peer = null;
+        }
     });
 }
 
 function connectToPeer(targetId) {
     if (!targetId) return;
-    
+
+    // Peer ainda não existe ou foi destruído: recria e conecta quando abrir
+    if (!peer || peer.destroyed) {
+        initializePeer(targetId);
+        return;
+    }
+    // Ainda abrindo a sessão com o servidor: conecta assim que abrir
+    if (!peer.open) {
+        pendingTargetId = targetId;
+        showLoader('Iniciando conexão segura...');
+        return;
+    }
+
     showLoader('Conectando a ' + targetId + '...');
-    
+
     // Cleanup old connection
     if (conn) {
         conn.close();
     }
-    
-    conn = peer.connect(targetId);
-    
-    conn.on('open', () => {
+
+    const thisConn = peer.connect(targetId, { reliable: true });
+    conn = thisConn;
+
+    // Sem resposta em 15s = TV offline ou rede bloqueando a conexão direta
+    clearTimeout(connectTimer);
+    connectTimer = setTimeout(() => {
+        if (!thisConn.open) {
+            thisConn.close();
+            hideLoader();
+            alert('Não foi possível conectar à TV. Verifique se o CleanIPTV está aberto e se ambos estão com internet.');
+            showScreen('setup-screen');
+            renderSavedDevices();
+        }
+    }, 15000);
+
+    thisConn.on('open', () => {
+        clearTimeout(connectTimer);
         hideLoader();
         saveDevice(targetId);
         connectedIdEl.innerText = targetId;
         showScreen('remote-screen');
-        
+
         // Haptic feedback
         if (navigator.vibrate) navigator.vibrate(50);
     });
-    
-    conn.on('close', () => {
+
+    thisConn.on('close', () => {
+        if (conn !== thisConn) return; // conexão antiga já substituída
+        clearTimeout(connectTimer);
+        hideLoader();
         alert('A conexão com a TV foi encerrada.');
         disconnect();
     });
-    
-    conn.on('error', (err) => {
+
+    thisConn.on('error', (err) => {
+        clearTimeout(connectTimer);
         hideLoader();
-        alert('Falha na conexão: ' + err.message);
+        alert('Falha na conexão: ' + friendlyError(err));
         disconnect();
     });
 }
 
 function disconnect() {
+    clearTimeout(connectTimer);
     if (conn) {
-        conn.close();
+        const old = conn;
         conn = null;
+        old.close();
     }
     showScreen('setup-screen');
     renderSavedDevices();
@@ -180,13 +257,9 @@ function sendCommand(key) {
 
 // Event Listeners
 btnConnect.addEventListener('click', () => {
-    const val = peerIdInput.value.trim();
+    const val = peerIdInput.value.trim().toUpperCase();
     if (val) {
-        if (!peer) {
-            initializePeer(val);
-        } else {
-            connectToPeer(val);
-        }
+        connectToPeer(val);
     }
 });
 
@@ -214,11 +287,7 @@ btnScan.addEventListener('click', () => {
             } catch(e) {}
             
             peerIdInput.value = id;
-            if (!peer) {
-                initializePeer(id);
-            } else {
-                connectToPeer(id);
-            }
+            connectToPeer(id);
         }, (error) => {
             // parse error, ignore
         });
